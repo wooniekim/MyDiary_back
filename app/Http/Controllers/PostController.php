@@ -25,21 +25,15 @@ class PostController extends Controller
             'description'=>'required',
             'image'=>'required|image'
         ]);
+        $name = explode(".", $_FILES['image']['name']);   // 파일이름 확장자 구분
+        $img = $name[0] . strtotime("Now") . '.' . $name[1];    // 파일이름 시간 추가해서 수정
+        $request->file('image')->storeAs('images', $img, 'public');
 
-        try{
-            $imageName = Str::random().'.'.$request->image->getClientOriginalExtension();
-            Storage::disk('public')->putFileAs('post/image', $request->image,$imageName);
-            Post::create($request->post()+['image'=>$imageName]);
-
-            return response()->json([
-                'message'=>'Post Created Successfully!!'
-            ]);
-        }catch(\Exception $e){
-            \Log::error($e->getMessage());
-            return response()->json([
-                'message'=>'Something goes wrong while creating a post!!'
-            ],500);
-        }
+        DB::table('posts')->insert([
+            'title' => $request->title,
+            'description' => $request->description,
+            'image' => $request->image,
+        ]);
     }
 
     // 뭔지 모르겠음
@@ -51,7 +45,7 @@ class PostController extends Controller
     }
 
     // 글 수정
-    public function update(Request $request, Post $post)
+    public function update(Request $request, Post $post, $id)
     {
         $request->validate([
             'title'=>'required',
@@ -59,43 +53,24 @@ class PostController extends Controller
             'image'=>'nullable'
         ]);
 
-        try{
-
-            $post->fill($request->post())->update();
-
-            if($request->hasFile('image')){
-
-                // remove old image
-                if($post->image){
-                    $exists = Storage::disk('public')->exists("post/image/{$post->image}");
-                    if($exists){
-                        Storage::disk('public')->delete("post/image/{$post->image}");
-                    }
-                }
-
-                $imageName = Str::random().'.'.$request->image->getClientOriginalExtension();
-                Storage::disk('public')->putFileAs('post/image', $request->image,$imageName);
-                $post->image = $imageName;
-                $post->save();
-            }
-
-            return response()->json([
-                'message'=>'Post Updated Successfully!!'
-            ]);
-
-        }catch(\Exception $e){
-            \Log::error($e->getMessage());
-            return response()->json([
-                'message'=>'Something goes wrong while updating a post!!'
-            ],500);
-        }
+        $posts = DB::table('posts')
+        ->where('posts.id', $id)
+        ->update([
+            'title' => $request->title,
+            'description' => $request->description,
+        ]);
+        
+        return response()->json([
+            'message'=>'성공!!'
+        ]);
     }
+    
+    
 
     // 글 삭제
     public function destroy(Request $request, $id)
     {
         $posts = DB::table('posts')->where('id', $id)->delete();
         return;
-        // return view('board.deleteck_q&a', compact('posts'));
     }
 }
